@@ -1,0 +1,122 @@
+function doGet(e) {
+  var page = e.parameter.page || 'quiz';
+  
+  if (page === 'leaderboard') {
+    var template = HtmlService.createTemplateFromFile('Leaderboard');
+    return template.evaluate()
+      .setTitle('Quiz Leaderboard')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } else {
+    var template = HtmlService.createTemplateFromFile('Index');
+    template.tableNumber = e.parameter.table || '';
+    return template.evaluate()
+      .setTitle('Quiz System')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+}
+
+function getRoundData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var controlSheet = ss.getSheetByName('Control');
+  var questionsSheet = ss.getSheetByName('Questions');
+  
+  var currentRound = controlSheet.getRange('B1').getValue();
+  var timeLimit = controlSheet.getRange('B3').getValue();
+  var quizActive = controlSheet.getRange('B5').getValue();
+  
+  if (!quizActive || !currentRound) {
+    return { active: false };
+  }
+  
+  // Calculate question IDs for this round (4 questions per round)
+  var startQuestionId = ((currentRound - 1) * 4) + 1;
+  var endQuestionId = startQuestionId + 3;
+  
+  var questionData = questionsSheet.getDataRange().getValues();
+  var roundQuestions = [];
+  
+  for (var i = 1; i < questionData.length; i++) {
+    var qId = questionData[i][0];
+    if (qId >= startQuestionId && qId <= endQuestionId) {
+      roundQuestions.push({
+        id: questionData[i][0],
+        text: questionData[i][1],
+        answerA: questionData[i][2],
+        pointsA: questionData[i][3],
+        answerB: questionData[i][4],
+        pointsB: questionData[i][5],
+        answerC: questionData[i][6],
+        pointsC: questionData[i][7],
+        answerD: questionData[i][8],
+        pointsD: questionData[i][9],
+        answerE: questionData[i][10],
+        pointsE: questionData[i][11]
+      });
+    }
+  }
+  
+  // Sort by question ID to ensure correct order
+  roundQuestions.sort(function(a, b) { return a.id - b.id; });
+  
+  return {
+    active: true,
+    round: currentRound,
+    questions: roundQuestions,
+    timeLimit: timeLimit
+  };
+}
+
+function submitAnswer(tableNumber, questionId, answerLetter) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var responsesSheet = ss.getSheetByName('Responses');
+  var questionsSheet = ss.getSheetByName('Questions');
+  
+  // Look up point value for the submitted answer
+  var questionData = questionsSheet.getDataRange().getValues();
+  var points = 0;
+  
+  for (var i = 1; i < questionData.length; i++) {
+    if (questionData[i][0] == questionId) {
+      var pointsIndex = {'A': 3, 'B': 5, 'C': 7, 'D': 9, 'E': 11};
+      points = questionData[i][pointsIndex[answerLetter]] || 0;
+      break;
+    }
+  }
+  
+  // Write submission
+  var timestamp = new Date();
+  responsesSheet.appendRow([timestamp, tableNumber, questionId, answerLetter, points]);
+  
+  return { success: true, message: 'Answer submitted!', points: points };
+
+}
+
+function getLeaderboardData() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var controlSheet = ss.getSheetByName('Control');
+  var leaderboardSheet = ss.getSheetByName('Leaderboard');
+  
+  var leaderboardLive = controlSheet.getRange('B7').getValue();
+  
+  if (!leaderboardLive) {
+    return { paused: true };
+  }
+  
+  var data = leaderboardSheet.getRange('A2:D21').getValues();
+  
+  var leaderboard = [];
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][2] > 0 || data[i][3] > 0) {
+      leaderboard.push({
+        rank: data[i][0],
+        tableNumber: data[i][1],
+        totalScore: data[i][2],
+        questionsAnswered: data[i][3]
+      });
+    }
+  }
+  
+  leaderboard.sort(function(a, b) { return a.rank - b.rank; });
+  
+  return { paused: false, data: leaderboard };
+}
