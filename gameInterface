@@ -347,13 +347,24 @@
         return;
       }
 
-      // Check if this is a new round
-      if (currentRound !== data.round) {
+      // Check if this is a new round - use loose equality to handle type differences
+      // Convert both to strings for consistent comparison
+      var newRound = String(data.round).trim();
+      var oldRound = currentRound ? String(currentRound).trim() : null;
+
+      if (oldRound !== newRound) {
+        console.log('New round detected: ' + oldRound + ' -> ' + newRound);
         currentRound = data.round;
         roundQuestions = data.questions;
         currentQuestionIndex = 0;
         roundTimeRemaining = data.timeLimit;
         roundStartTime = Date.now();
+
+        // Clear any existing timer
+        if (timerInterval) {
+          clearInterval(timerInterval);
+        }
+
         startRoundTimer();
       }
 
@@ -362,6 +373,18 @@
 
     function displayCurrentQuestion() {
       const content = document.getElementById('content');
+
+      // Ensure we have questions to display
+      if (!roundQuestions || roundQuestions.length === 0) {
+        content.innerHTML = `
+          <div class="waiting">
+            <div class="waiting-icon">📝</div>
+            <h3>Loading questions...</h3>
+            <p>Please wait</p>
+          </div>
+        `;
+        return;
+      }
 
       // Check if round is complete
       if (currentQuestionIndex >= roundQuestions.length) {
@@ -408,7 +431,7 @@
 
       // Use template literal for cleaner, faster HTML generation
       content.innerHTML = `
-        <div class="round-progress">Question ${currentQuestionIndex + 1} of ${roundQuestions.length}</div>
+        <div class="round-progress">Round ${currentRound} - Question ${currentQuestionIndex + 1} of ${roundQuestions.length}</div>
         <div class="timer${roundTimeRemaining <= 30 ? ' warning' : ''}" id="timer">${roundTimeRemaining}s</div>
         <div class="question">${question.text}</div>
         ${answerButtons}
