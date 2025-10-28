@@ -32,10 +32,13 @@ function getRoundData() {
 
     var questionsSheet = ss.getSheetByName('Questions');
 
-    // Optimize: Get only first 100 rows instead of entire sheet to prevent timeout
-    // Columns: Round ID, Question ID, Text, A, PtsA, B, PtsB, C, PtsC, D, PtsD, E, PtsE (13 columns)
-    var lastRow = Math.min(questionsSheet.getLastRow(), 100);
-    var questionData = questionsSheet.getRange(1, 1, lastRow, 13).getValues();
+    // Get all data - for small sheets this is fine, and it handles variable column counts
+    var questionData = questionsSheet.getDataRange().getValues();
+
+    if (!questionData || questionData.length < 2) {
+      Logger.log('No question data found');
+      return { active: false };
+    }
 
     var roundQuestions = [];
 
@@ -60,25 +63,34 @@ function getRoundData() {
         };
 
         // Add answers dynamically - only include non-empty answers
+        // Handle variable column counts by checking array length
         var answers = [
-          {letter: 'A', text: questionData[i][3], points: questionData[i][4]},
-          {letter: 'B', text: questionData[i][5], points: questionData[i][6]},
-          {letter: 'C', text: questionData[i][7], points: questionData[i][8]},
-          {letter: 'D', text: questionData[i][9], points: questionData[i][10]},
-          {letter: 'E', text: questionData[i][11], points: questionData[i][12]}
+          {letter: 'A', textIdx: 3, pointsIdx: 4},
+          {letter: 'B', textIdx: 5, pointsIdx: 6},
+          {letter: 'C', textIdx: 7, pointsIdx: 8},
+          {letter: 'D', textIdx: 9, pointsIdx: 10},
+          {letter: 'E', textIdx: 11, pointsIdx: 12}
         ];
 
-        // Only add answers that have text
         answers.forEach(function(ans) {
-          if (ans.text && ans.text.toString().trim() !== '') {
-            question['answer' + ans.letter] = ans.text;
-            question['points' + ans.letter] = ans.points || 0;
+          // Check if columns exist before accessing
+          if (questionData[i].length > ans.textIdx) {
+            var answerText = questionData[i][ans.textIdx];
+            if (answerText && answerText.toString().trim() !== '') {
+              question['answer' + ans.letter] = answerText;
+              // Get points if column exists, default to 0
+              question['points' + ans.letter] = (questionData[i].length > ans.pointsIdx)
+                ? (questionData[i][ans.pointsIdx] || 0)
+                : 0;
+            }
           }
         });
 
         roundQuestions.push(question);
       }
     }
+
+    Logger.log('Found ' + roundQuestions.length + ' questions for round ' + currentRound);
 
     return {
       active: true,
@@ -87,8 +99,9 @@ function getRoundData() {
       timeLimit: timeLimit
     };
   } catch (error) {
-    // Log error and return safe response
+    // Log detailed error information
     Logger.log('Error in getRoundData: ' + error.toString());
+    Logger.log('Error stack: ' + error.stack);
     return { active: false, error: error.toString() };
   }
 }
@@ -99,31 +112,32 @@ function submitAnswer(tableNumber, questionId, answerLetter) {
     var responsesSheet = ss.getSheetByName('Responses');
     var questionsSheet = ss.getSheetByName('Questions');
 
-    // Map answer letters to column numbers (1-indexed) for points
+    // Map answer letters to column indices (0-indexed) for points
     // Column structure: A=RoundID, B=QuestionID, C=Text, D=AnsA, E=PtsA, F=AnsB, G=PtsB, etc.
-    var pointsColumns = {'A': 5, 'B': 7, 'C': 9, 'D': 11, 'E': 13};
-    var pointsColumn = pointsColumns[answerLetter];
+    var pointsIndices = {'A': 4, 'B': 6, 'C': 8, 'D': 10, 'E': 12};
+    var pointsIndex = pointsIndices[answerLetter];
 
-    if (!pointsColumn) {
+    if (pointsIndex === undefined) {
       return { success: false, message: 'Invalid answer letter', points: 0 };
     }
 
-    // Optimize: Get only first 100 rows instead of entire sheet
-    var lastRow = Math.min(questionsSheet.getLastRow(), 100);
-    var questionData = questionsSheet.getRange(1, 1, lastRow, 13).getValues();
-    var questionRow = -1;
+    // Get all data - handles variable column counts
+    var questionData = questionsSheet.getDataRange().getValues();
     var points = 0;
+    var found = false;
 
     for (var i = 1; i < questionData.length; i++) {
       if (questionData[i][1] == questionId) {  // Column B (index 1) is Question ID
-        questionRow = i + 1;  // Convert to 1-indexed row number
-        // Get points from the appropriate column (0-indexed array)
-        points = questionData[i][pointsColumn - 1] || 0;
+        // Get points from the appropriate column if it exists
+        if (questionData[i].length > pointsIndex) {
+          points = questionData[i][pointsIndex] || 0;
+        }
+        found = true;
         break;
       }
     }
 
-    if (questionRow === -1) {
+    if (!found) {
       return { success: false, message: 'Question not found', points: 0 };
     }
 
