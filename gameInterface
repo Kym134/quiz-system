@@ -57,6 +57,18 @@
       padding: 1rem;
       background: linear-gradient(135deg, #E8F0FE 0%, #F8F9FA 100%);
       border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .timer.warning {
+      color: #FF6B6B;
+      background: linear-gradient(135deg, #FFE5E5 0%, #FFF0F0 100%);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
     }
 
 
@@ -289,17 +301,29 @@
     let roundTimeRemaining = 0;
     let timerInterval = null;
     let roundStartTime = null;
+    let isLoading = false; // Prevent overlapping requests
+    let pollInterval = null;
 
     function loadRound() {
+      // Prevent overlapping requests
+      if (isLoading) return;
+
+      isLoading = true;
       google.script.run
-        .withSuccessHandler(handleRoundData)
-        .withFailureHandler(showError)
+        .withSuccessHandler(data => {
+          isLoading = false;
+          handleRoundData(data);
+        })
+        .withFailureHandler(error => {
+          isLoading = false;
+          showError(error);
+        })
         .getRoundData();
     }
 
     function handleRoundData(data) {
       const content = document.getElementById('content');
-      
+
       if (!data.active) {
         content.innerHTML = `
           <div class="waiting">
@@ -308,10 +332,10 @@
             <p>Stand by, the next question will appear shortly</p>
           </div>
         `;
-        setTimeout(loadRound, 5000);
+        // Polling continues via main interval
         return;
       }
-      
+
       if (!data.questions || data.questions.length === 0) {
         content.innerHTML = `
           <div class="waiting">
@@ -322,7 +346,7 @@
         `;
         return;
       }
-      
+
       // Check if this is a new round
       if (currentRound !== data.round) {
         currentRound = data.round;
@@ -332,13 +356,13 @@
         roundStartTime = Date.now();
         startRoundTimer();
       }
-      
+
       displayCurrentQuestion();
     }
 
     function displayCurrentQuestion() {
       const content = document.getElementById('content');
-      
+
       // Check if round is complete
       if (currentQuestionIndex >= roundQuestions.length) {
         clearInterval(timerInterval);
@@ -349,10 +373,10 @@
             <p>Waiting for next round...</p>
           </div>
         `;
-        setTimeout(loadRound, 5000);
+        // Polling continues via main interval
         return;
       }
-      
+
       // Check if time has run out
       if (roundTimeRemaining <= 0) {
         clearInterval(timerInterval);
@@ -363,55 +387,58 @@
             <p>Waiting for next round...</p>
           </div>
         `;
-        setTimeout(loadRound, 5000);
+        // Polling continues via main interval
         return;
       }
-      
+
       const question = roundQuestions[currentQuestionIndex];
       selectedAnswer = null;
-      
-      let html = '<div class="round-progress">Question ' + (currentQuestionIndex + 1) + ' of ' + roundQuestions.length + '</div>';
-      html += '<div class="timer' + (roundTimeRemaining <= 30 ? ' warning' : '') + '" id="timer">' + roundTimeRemaining + 's</div>';
-      html += '<div class="question">' + question.text + '</div>';
-      
-      ['A', 'B', 'C', 'D', 'E'].forEach(letter => {
-        const answerText = question['answer' + letter];
-        if (answerText) {
-          html += `<button class="answer-btn" onclick="selectAnswer('${letter}', this)">
-                    <div class="answer-radio">
-                      <div class="answer-radio-inner"></div>
-                    </div>
-                    <span><strong>${letter}:</strong> ${answerText}</span>
-                   </button>`;
-        }
-      });
-      
-      html += '<button class="submit-btn" id="submitBtn" onclick="submitAnswer()" disabled>Submit Answer</button>';
-      html += '<div id="message"></div>';
-      
-      content.innerHTML = html;
+
+      // Build answer buttons efficiently
+      const answerButtons = ['A', 'B', 'C', 'D', 'E']
+        .filter(letter => question['answer' + letter])
+        .map(letter => `
+          <button class="answer-btn" onclick="selectAnswer('${letter}', this)">
+            <div class="answer-radio">
+              <div class="answer-radio-inner"></div>
+            </div>
+            <span><strong>${letter}:</strong> ${question['answer' + letter]}</span>
+          </button>
+        `).join('');
+
+      // Use template literal for cleaner, faster HTML generation
+      content.innerHTML = `
+        <div class="round-progress">Question ${currentQuestionIndex + 1} of ${roundQuestions.length}</div>
+        <div class="timer${roundTimeRemaining <= 30 ? ' warning' : ''}" id="timer">${roundTimeRemaining}s</div>
+        <div class="question">${question.text}</div>
+        ${answerButtons}
+        <button class="submit-btn" id="submitBtn" onclick="submitAnswer()" disabled>Submit Answer</button>
+        <div id="message"></div>
+      `;
     }
 
     function startRoundTimer() {
       if (timerInterval) clearInterval(timerInterval);
-      
+
       timerInterval = setInterval(() => {
         roundTimeRemaining--;
         const timerEl = document.getElementById('timer');
         if (timerEl) {
           timerEl.textContent = roundTimeRemaining + 's';
-          
+
           if (roundTimeRemaining <= 30) {
             timerEl.classList.add('warning');
           }
-          
+
           if (roundTimeRemaining <= 0) {
             clearInterval(timerInterval);
+            // Disable all interaction
             const answerBtns = document.querySelectorAll('.answer-btn');
             answerBtns.forEach(btn => btn.disabled = true);
             const submitBtn = document.getElementById('submitBtn');
             if (submitBtn) submitBtn.disabled = true;
-            
+
+            // Show time's up message after brief delay
             setTimeout(() => {
               const content = document.getElementById('content');
               content.innerHTML = `
@@ -421,7 +448,7 @@
                   <p>Waiting for next round...</p>
                 </div>
               `;
-              setTimeout(loadRound, 5000);
+              // Polling continues via main interval - no extra setTimeout needed
             }, 2000);
           }
         }
@@ -440,36 +467,42 @@
 
     function submitAnswer() {
       if (!selectedAnswer || roundTimeRemaining <= 0) return;
-      
+
       const currentQuestion = roundQuestions[currentQuestionIndex];
-      document.getElementById('submitBtn').disabled = true;
-      
-      // Disable answer buttons during submission
-      document.querySelectorAll('.answer-btn').forEach(btn => {
-        btn.disabled = true;
-      });
-      
+      const submitBtn = document.getElementById('submitBtn');
+      const answerBtns = document.querySelectorAll('.answer-btn');
+
+      // Disable all inputs during submission
+      if (submitBtn) submitBtn.disabled = true;
+      answerBtns.forEach(btn => btn.disabled = true);
+
       google.script.run
         .withSuccessHandler(handleSubmitResponse)
-        .withFailureHandler(showError)
+        .withFailureHandler(error => {
+          // Re-enable on error
+          if (submitBtn) submitBtn.disabled = false;
+          answerBtns.forEach(btn => btn.disabled = false);
+          showError(error);
+        })
         .submitAnswer(tableNumber, currentQuestion.id, selectedAnswer);
     }
 
     function handleSubmitResponse(response) {
       if (response.success) {
         showMessage('Answer submitted!', 'success');
-        
+
+        // Move to next question after brief delay
         setTimeout(() => {
           currentQuestionIndex++;
           displayCurrentQuestion();
         }, 1000);
       } else {
-        showMessage(response.message, 'error');
-        // Re-enable buttons if there was an error
-        document.querySelectorAll('.answer-btn').forEach(btn => {
-          btn.disabled = false;
-        });
-        document.getElementById('submitBtn').disabled = false;
+        showMessage(response.message || 'Submission failed', 'error');
+        // Re-enable buttons on failure
+        const submitBtn = document.getElementById('submitBtn');
+        const answerBtns = document.querySelectorAll('.answer-btn');
+        if (submitBtn) submitBtn.disabled = false;
+        answerBtns.forEach(btn => btn.disabled = false);
       }
     }
 
@@ -482,14 +515,23 @@
     }
 
     function showError(error) {
-      showMessage('Error: ' + error.message, 'error');
+      showMessage('Error: ' + (error.message || 'Unknown error'), 'error');
     }
 
-    // Initial load
-    loadRound();
-    
-    // Poll for new rounds every 10 seconds
-    setInterval(loadRound, 10000);
+    function startPolling() {
+      // Clear any existing polling interval
+      if (pollInterval) clearInterval(pollInterval);
+
+      // Initial load
+      loadRound();
+
+      // Poll for updates every 10 seconds
+      // The isLoading flag prevents overlapping requests
+      pollInterval = setInterval(loadRound, 10000);
+    }
+
+    // Start the application
+    startPolling();
   </script>
 </body>
 </html>
