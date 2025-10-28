@@ -46,6 +46,17 @@
       border-bottom: 1px solid #e0e0e0;
       transition: background 0.2s;
       align-items: center;
+      animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     .table-row:hover {
       background: #f8f9fa;
@@ -130,11 +141,23 @@
 
   <script>
     let cachedData = null;
+    let isLoading = false; // Prevent overlapping requests
+    let pollInterval = null;
 
     function loadLeaderboard() {
+      // Prevent overlapping requests
+      if (isLoading) return;
+
+      isLoading = true;
       google.script.run
-        .withSuccessHandler(handleLeaderboardData)
-        .withFailureHandler(showError)
+        .withSuccessHandler(data => {
+          isLoading = false;
+          handleLeaderboardData(data);
+        })
+        .withFailureHandler(error => {
+          isLoading = false;
+          showError(error);
+        })
         .getLeaderboardData();
     }
 
@@ -163,16 +186,17 @@
 
     function displayLeaderboard(data) {
       const content = document.getElementById('leaderboard-content');
-      
+
       if (!data || data.length === 0) {
         content.innerHTML = '<div class="no-data">No scores yet. Waiting for submissions...</div>';
+        updateTimestamp();
         return;
       }
-      
-      let html = '';
-      data.forEach(row => {
-        const rankClass = row.rank <= 3 ? 'rank-' + row.rank : '';
-        html += `
+
+      // Optimize HTML generation using array.map() and join()
+      const html = data.map(row => {
+        const rankClass = row.rank <= 3 ? `rank-${row.rank}` : '';
+        return `
           <div class="table-row">
             <div class="rank ${rankClass}">${row.rank}</div>
             <div class="table-name">Table ${row.tableNumber}</div>
@@ -180,22 +204,43 @@
             <div class="questions">${row.questionsAnswered} questions</div>
           </div>
         `;
-      });
-      
+      }).join('');
+
       content.innerHTML = html;
-      
+      updateTimestamp();
+    }
+
+    function updateTimestamp() {
       const now = new Date();
-      document.getElementById('last-updated').textContent = 
+      document.getElementById('last-updated').textContent =
         'Last updated: ' + now.toLocaleTimeString();
     }
 
     function showError(error) {
       const content = document.getElementById('leaderboard-content');
-      content.innerHTML = '<div class="no-data">Error loading leaderboard: ' + error.message + '</div>';
+      const statusEl = document.getElementById('status');
+
+      content.innerHTML = '<div class="no-data">Error loading leaderboard: ' + (error.message || 'Unknown error') + '</div>';
+      statusEl.textContent = '⚠ Connection Error';
+      statusEl.className = 'status paused';
+
+      updateTimestamp();
     }
 
-    loadLeaderboard();
-    setInterval(loadLeaderboard, 5000);
+    function startPolling() {
+      // Clear any existing polling interval
+      if (pollInterval) clearInterval(pollInterval);
+
+      // Initial load
+      loadLeaderboard();
+
+      // Poll for updates every 5 seconds
+      // The isLoading flag prevents overlapping requests
+      pollInterval = setInterval(loadLeaderboard, 5000);
+    }
+
+    // Start the application
+    startPolling();
   </script>
 </body>
 </html>
