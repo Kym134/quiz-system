@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: helvetica Neue, helvetica, Arial, sans-serif;
+      background: #FFFFFF;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #FFFFFF;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+      border: 4px solid #005BAA;
+    }
+
+    .table-badge {
+      display: inline-block;
+      background: #005BAA;
+      color: #FFFFFF;
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+
+    .round-progress {
+      text-align: center;
+      color: #424242;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 1rem;
+      background: #F5F5F5;
+      border-radius: 8px;
+    }
+
+    .timer {
+      text-align: center;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #0066CC;
+      margin: 1.5rem 0;
+      padding: 1rem;
+      background: linear-gradient(135deg, #E8F0FE 0%, #F8F9FA 100%);
+      border-radius: 8px;
+    }
+
+
+
+    .question {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #003A70;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .answer-btn {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+      padding: 1rem;
+      margin: 0.75rem 0;
+      background: #F5F5F5;
+      color: #424242;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      text-align: left;
+      transition: all 0.3s ease;
+      font-weight: 400;
+    }
+
+    .answer-btn:hover:not(:disabled) {
+      background: #E8E8E8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+    }
+
+    .answer-btn.selected {
+      background: #008A52;
+      color: #FFFFFF;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+    }
+
+    .answer-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .answer-radio {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #9E9E9E;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+    }
+
+    .answer-btn.selected .answer-radio {
+      border-color: white;
+      background: white;
+    }
+
+    .answer-radio-inner {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #008A52;
+      display: none;
+    }
+
+    .answer-btn.selected .answer-radio-inner {
+      display: block;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 1rem 2rem;
+      background: #0066CC;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      background: #0052A3;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 102, 204, 0.2);
+    }
+
+    .submit-btn:disabled {
+      background: #9E9E9E;
+      cursor: not-allowed;
+      transform: none;
+      opacity: 0.5;
+    }
+
+    .message {
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+      text-align: center;
+      font-weight: 600;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .success {
+      background: #E8F5E9;
+      color: #008A52;
+      border-left: 4px solid #A4D65E;
+    }
+
+    .error {
+      background: #FFE5E5;
+      color: #FF6B6B;
+      border-left: 4px solid #FF6B6B;
+    }
+
+    .waiting {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: #9E9E9E;
+    }
+
+    .waiting-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .waiting h3 {
+      color: #003A70;
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+    }
+
+    .waiting p {
+      color: #9E9E9E;
+      font-size: 1rem;
+    }
+
+    .round-complete {
+      text-align: center;
+      padding: 3rem 2rem;
+    }
+
+    .round-complete-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+
+    .round-complete h2 {
+      color: #008A52;
+      margin-bottom: 1rem;
+      font-size: 1.75rem;
+    }
+
+    .round-complete p {
+      color: #9E9E9E;
+      font-size: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      .container {
+        padding: 1.5rem;
+      }
+
+      .timer {
+        font-size: 2.5rem;
+      }
+
+      .question {
+        font-size: 1.125rem;
+      }
+
+      .answer-btn {
+        padding: 0.875rem;
+        font-size: 0.9375rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="table-badge">Table <?= tableNumber ?></div>
+    <div id="content">
+      <div class="waiting">
+        <div class="waiting-icon">⏳</div>
+        <h3>Loading...</h3>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tableNumber = '<?= tableNumber ?>';
+    let currentRound = null;
+    let roundQuestions = [];
+    let currentQuestionIndex = 0;
+    let selectedAnswer = null;
+    let roundTimeRemaining = 0;
+    let timerInterval = null;
+    let roundStartTime = null;
+
+    function loadRound() {
+      google.script.run
+        .withSuccessHandler(handleRoundData)
+        .withFailureHandler(showError)
+        .getRoundData();
+    }
+
+    function handleRoundData(data) {
+      const content = document.getElementById('content');
+      
+      if (!data.active) {
+        content.innerHTML = `
+          <div class="waiting">
+            <div class="waiting-icon">⏸️</div>
+            <h3>Waiting for next round...</h3>
+            <p>Stand by, the next question will appear shortly</p>
+          </div>
+        `;
+        setTimeout(loadRound, 5000);
+        return;
+      }
+      
+      if (!data.questions || data.questions.length === 0) {
+        content.innerHTML = `
+          <div class="waiting">
+            <div class="waiting-icon">📝</div>
+            <h3>No questions available</h3>
+            <p>Waiting for questions to be loaded for this round</p>
+          </div>
+        `;
+        return;
+      }
+      
+      // Check if this is a new round
+      if (currentRound !== data.round) {
+        currentRound = data.round;
+        roundQuestions = data.questions;
+        currentQuestionIndex = 0;
+        roundTimeRemaining = data.timeLimit;
+        roundStartTime = Date.now();
+        startRoundTimer();
+      }
+      
+      displayCurrentQuestion();
+    }
+
+    function displayCurrentQuestion() {
+      const content = document.getElementById('content');
+      
+      // Check if round is complete
+      if (currentQuestionIndex >= roundQuestions.length) {
+        clearInterval(timerInterval);
+        content.innerHTML = `
+          <div class="round-complete">
+            <div class="round-complete-icon">🎉</div>
+            <h2>Round Complete!</h2>
+            <p>Waiting for next round...</p>
+          </div>
+        `;
+        setTimeout(loadRound, 5000);
+        return;
+      }
+      
+      // Check if time has run out
+      if (roundTimeRemaining <= 0) {
+        clearInterval(timerInterval);
+        content.innerHTML = `
+          <div class="round-complete">
+            <div class="round-complete-icon">⏰</div>
+            <h2>Time's Up!</h2>
+            <p>Waiting for next round...</p>
+          </div>
+        `;
+        setTimeout(loadRound, 5000);
+        return;
+      }
+      
+      const question = roundQuestions[currentQuestionIndex];
+      selectedAnswer = null;
+      
+      let html = '<div class="round-progress">Question ' + (currentQuestionIndex + 1) + ' of ' + roundQuestions.length + '</div>';
+      html += '<div class="timer' + (roundTimeRemaining <= 30 ? ' warning' : '') + '" id="timer">' + roundTimeRemaining + 's</div>';
+      html += '<div class="question">' + question.text + '</div>';
+      
+      ['A', 'B', 'C', 'D', 'E'].forEach(letter => {
+        const answerText = question['answer' + letter];
+        if (answerText) {
+          html += `<button class="answer-btn" onclick="selectAnswer('${letter}', this)">
+                    <div class="answer-radio">
+                      <div class="answer-radio-inner"></div>
+                    </div>
+                    <span><strong>${letter}:</strong> ${answerText}</span>
+                   </button>`;
+        }
+      });
+      
+      html += '<button class="submit-btn" id="submitBtn" onclick="submitAnswer()" disabled>Submit Answer</button>';
+      html += '<div id="message"></div>';
+      
+      content.innerHTML = html;
+    }
+
+    function startRoundTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      
+      timerInterval = setInterval(() => {
+        roundTimeRemaining--;
+        const timerEl = document.getElementById('timer');
+        if (timerEl) {
+          timerEl.textContent = roundTimeRemaining + 's';
+          
+          if (roundTimeRemaining <= 30) {
+            timerEl.classList.add('warning');
+          }
+          
+          if (roundTimeRemaining <= 0) {
+            clearInterval(timerInterval);
+            const answerBtns = document.querySelectorAll('.answer-btn');
+            answerBtns.forEach(btn => btn.disabled = true);
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) submitBtn.disabled = true;
+            
+            setTimeout(() => {
+              const content = document.getElementById('content');
+              content.innerHTML = `
+                <div class="round-complete">
+                  <div class="round-complete-icon">⏰</div>
+                  <h2>Time's Up!</h2>
+                  <p>Waiting for next round...</p>
+                </div>
+              `;
+              setTimeout(loadRound, 5000);
+            }, 2000);
+          }
+        }
+      }, 1000);
+    }
+
+    function selectAnswer(letter, element) {
+      if (roundTimeRemaining <= 0) return;
+      selectedAnswer = letter;
+      document.querySelectorAll('.answer-btn').forEach(btn => {
+        btn.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      document.getElementById('submitBtn').disabled = false;
+    }
+
+    function submitAnswer() {
+      if (!selectedAnswer || roundTimeRemaining <= 0) return;
+      
+      const currentQuestion = roundQuestions[currentQuestionIndex];
+      document.getElementById('submitBtn').disabled = true;
+      
+      // Disable answer buttons during submission
+      document.querySelectorAll('.answer-btn').forEach(btn => {
+        btn.disabled = true;
+      });
+      
+      google.script.run
+        .withSuccessHandler(handleSubmitResponse)
+        .withFailureHandler(showError)
+        .submitAnswer(tableNumber, currentQuestion.id, selectedAnswer);
+    }
+
+    function handleSubmitResponse(response) {
+      if (response.success) {
+        showMessage('Answer submitted!', 'success');
+        
+        setTimeout(() => {
+          currentQuestionIndex++;
+          displayCurrentQuestion();
+        }, 1000);
+      } else {
+        showMessage(response.message, 'error');
+        // Re-enable buttons if there was an error
+        document.querySelectorAll('.answer-btn').forEach(btn => {
+          btn.disabled = false;
+        });
+        document.getElementById('submitBtn').disabled = false;
+      }
+    }
+
+    function showMessage(msg, type) {
+      const messageEl = document.getElementById('message');
+      if (messageEl) {
+        messageEl.className = 'message ' + type;
+        messageEl.textContent = msg;
+      }
+    }
+
+    function showError(error) {
+      showMessage('Error: ' + error.message, 'error');
+    }
+
+    // Initial load
+    loadRound();
+    
+    // Poll for new rounds every 10 seconds
+    setInterval(loadRound, 10000);
+  </script>
+</body>
+</html>
