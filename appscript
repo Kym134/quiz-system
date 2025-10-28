@@ -29,36 +29,54 @@ function getRoundData() {
     return { active: false };
   }
 
-  // Calculate question IDs for this round (4 questions per round)
-  var startQuestionId = ((currentRound - 1) * 4) + 1;
-
-  // Fetch only the 4 rows needed for this round (assuming question IDs match row numbers)
-  // Row 1 is header, so question ID 1 is in row 2
-  var startRow = startQuestionId + 1;
   var questionsSheet = ss.getSheetByName('Questions');
 
-  // Get only the 4 rows needed (12 columns: ID + text + 5 answer/point pairs)
-  var questionData = questionsSheet.getRange(startRow, 1, 4, 12).getValues();
+  // Get all question data (or a reasonable range like first 100 rows)
+  // Columns: Round ID, Question ID, Text, A, PtsA, B, PtsB, C, PtsC, D, PtsD, E, PtsE (13 columns)
+  var questionData = questionsSheet.getDataRange().getValues();
 
   var roundQuestions = [];
-  for (var i = 0; i < questionData.length; i++) {
-    roundQuestions.push({
-      id: questionData[i][0],
-      text: questionData[i][1],
-      answerA: questionData[i][2],
-      pointsA: questionData[i][3],
-      answerB: questionData[i][4],
-      pointsB: questionData[i][5],
-      answerC: questionData[i][6],
-      pointsC: questionData[i][7],
-      answerD: questionData[i][8],
-      pointsD: questionData[i][9],
-      answerE: questionData[i][10],
-      pointsE: questionData[i][11]
-    });
-  }
 
-  // No sorting needed - data is already in correct order
+  // Convert currentRound to string for consistent comparison
+  var currentRoundStr = String(currentRound).trim();
+
+  // Start from row 1 (skip header row 0)
+  for (var i = 1; i < questionData.length; i++) {
+    var roundId = questionData[i][0];
+
+    // Skip empty rows
+    if (!roundId) continue;
+
+    // Convert roundId to string and trim for consistent comparison
+    var roundIdStr = String(roundId).trim();
+
+    // Filter by Round ID matching current round
+    if (roundIdStr === currentRoundStr) {
+      var question = {
+        id: questionData[i][1],        // Question ID (column B)
+        text: questionData[i][2]        // Question text (column C)
+      };
+
+      // Add answers dynamically - only include non-empty answers
+      var answers = [
+        {letter: 'A', text: questionData[i][3], points: questionData[i][4]},
+        {letter: 'B', text: questionData[i][5], points: questionData[i][6]},
+        {letter: 'C', text: questionData[i][7], points: questionData[i][8]},
+        {letter: 'D', text: questionData[i][9], points: questionData[i][10]},
+        {letter: 'E', text: questionData[i][11], points: questionData[i][12]}
+      ];
+
+      // Only add answers that have text
+      answers.forEach(function(ans) {
+        if (ans.text && ans.text.toString().trim() !== '') {
+          question['answer' + ans.letter] = ans.text;
+          question['points' + ans.letter] = ans.points || 0;
+        }
+      });
+
+      roundQuestions.push(question);
+    }
+  }
 
   return {
     active: true,
@@ -73,19 +91,32 @@ function submitAnswer(tableNumber, questionId, answerLetter) {
   var responsesSheet = ss.getSheetByName('Responses');
   var questionsSheet = ss.getSheetByName('Questions');
 
-  // Map answer letters to column indices for points
-  var pointsIndex = {'A': 3, 'B': 5, 'C': 7, 'D': 9, 'E': 11};
-  var columnIndex = pointsIndex[answerLetter];
+  // Map answer letters to column numbers (1-indexed) for points
+  // Column structure: A=RoundID, B=QuestionID, C=Text, D=AnsA, E=PtsA, F=AnsB, G=PtsB, etc.
+  var pointsColumns = {'A': 5, 'B': 7, 'C': 9, 'D': 11, 'E': 13};
+  var pointsColumn = pointsColumns[answerLetter];
 
-  if (!columnIndex) {
+  if (!pointsColumn) {
     return { success: false, message: 'Invalid answer letter', points: 0 };
   }
 
-  // Direct lookup: question ID matches row number (row 1 is header, so question 1 is row 2)
-  var questionRow = parseInt(questionId) + 1;
+  // Find the row with matching Question ID (column B)
+  var questionData = questionsSheet.getDataRange().getValues();
+  var questionRow = -1;
+  var points = 0;
 
-  // Fetch only the specific cell with the points value
-  var points = questionsSheet.getRange(questionRow, columnIndex + 1).getValue() || 0;
+  for (var i = 1; i < questionData.length; i++) {
+    if (questionData[i][1] == questionId) {  // Column B (index 1) is Question ID
+      questionRow = i + 1;  // Convert to 1-indexed row number
+      // Get points from the appropriate column (0-indexed array)
+      points = questionData[i][pointsColumn - 1] || 0;
+      break;
+    }
+  }
+
+  if (questionRow === -1) {
+    return { success: false, message: 'Question not found', points: 0 };
+  }
 
   // Write submission
   var timestamp = new Date();

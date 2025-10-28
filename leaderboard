@@ -27,6 +27,12 @@
       padding: 30px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
     }
+    #leaderboard-content {
+      transition: opacity 0.3s ease;
+    }
+    #leaderboard-content.updating {
+      opacity: 0.7;
+    }
     .table-header {
       display: grid;
       grid-template-columns: 80px 1fr 150px 150px;
@@ -143,6 +149,15 @@
     let cachedData = null;
     let isLoading = false; // Prevent overlapping requests
     let pollInterval = null;
+    let lastDataHash = null; // Track if data actually changed
+
+    // Simple hash function to detect data changes
+    function hashData(data) {
+      if (!data || data.length === 0) return 'empty';
+      return data.map(row =>
+        `${row.rank}-${row.tableNumber}-${row.totalScore}-${row.questionsAnswered}`
+      ).join('|');
+    }
 
     function loadLeaderboard() {
       // Prevent overlapping requests
@@ -163,25 +178,35 @@
 
     function handleLeaderboardData(response) {
       const statusEl = document.getElementById('status');
-      
+
       if (response.paused) {
         statusEl.textContent = '⏸ Updates Paused';
         statusEl.className = 'status paused';
-        
+
         if (cachedData && cachedData.length > 0) {
-          displayLeaderboard(cachedData);
+          // Don't update display, keep showing cached data
+          updateTimestamp();
         } else {
           const content = document.getElementById('leaderboard-content');
           content.innerHTML = '<div class="paused-message">Leaderboard updates paused</div>';
+          updateTimestamp();
         }
         return;
       }
-      
+
       statusEl.textContent = '🔴 Live';
       statusEl.className = 'status live';
-      
-      cachedData = response.data;
-      displayLeaderboard(response.data);
+
+      // Check if data actually changed
+      const newHash = hashData(response.data);
+      if (newHash !== lastDataHash) {
+        lastDataHash = newHash;
+        cachedData = response.data;
+        displayLeaderboard(response.data);
+      } else {
+        // Data hasn't changed, just update timestamp
+        updateTimestamp();
+      }
     }
 
     function displayLeaderboard(data) {
