@@ -324,6 +324,18 @@
     function handleRoundData(data) {
       const content = document.getElementById('content');
 
+      // Handle null or undefined response
+      if (!data) {
+        content.innerHTML = `
+          <div class="waiting">
+            <div class="waiting-icon">⚠️</div>
+            <h3>Connection Error</h3>
+            <p>Unable to load quiz data. Retrying...</p>
+          </div>
+        `;
+        return;
+      }
+
       if (!data.active) {
         content.innerHTML = `
           <div class="waiting">
