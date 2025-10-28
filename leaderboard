@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Helvetica Neue,Helvetica,Arial,sans-serif; 
+      margin: 0;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: white;
+      font-size: 48px;
+      margin-bottom: 40px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .leaderboard {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .table-header {
+      display: grid;
+      grid-template-columns: 80px 1fr 150px 150px;
+      gap: 20px;
+      padding: 15px 20px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 150px 150px;
+      gap: 20px;
+      padding: 20px;
+      border-bottom: 1px solid #e0e0e0;
+      transition: background 0.2s;
+      align-items: center;
+    }
+    .table-row:hover {
+      background: #f8f9fa;
+    }
+    .table-row:last-child {
+      border-bottom: none;
+    }
+    .rank {
+      font-size: 32px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .rank-1 { color: #ffd700; }
+    .rank-2 { color: #c0c0c0; }
+    .rank-3 { color: #cd7f32; }
+    .table-name {
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .score {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a73e8;
+      text-align: center;
+    }
+    .questions {
+      font-size: 16px;
+      color: #666;
+      text-align: center;
+    }
+    .no-data {
+      text-align: center;
+      padding: 60px;
+      color: #666;
+      font-size: 20px;
+    }
+    .paused-message {
+      text-align: center;
+      padding: 60px;
+      color: #ea4335;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .last-updated {
+      text-align: center;
+      color: white;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    .status {
+      text-align: center;
+      color: white;
+      margin-bottom: 20px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .status.live {
+      color: #4ade80;
+    }
+    .status.paused {
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏆 Quiz Leaderboard</h1>
+    <div class="status" id="status"></div>
+    <div class="leaderboard">
+      <div class="table-header">
+        <div>Rank</div>
+        <div>Table</div>
+        <div>Total Score</div>
+        <div>Questions</div>
+      </div>
+      <div id="leaderboard-content">
+        <div class="no-data">Loading...</div>
+      </div>
+    </div>
+    <div class="last-updated" id="last-updated"></div>
+  </div>
+
+  <script>
+    let cachedData = null;
+
+    function loadLeaderboard() {
+      google.script.run
+        .withSuccessHandler(handleLeaderboardData)
+        .withFailureHandler(showError)
+        .getLeaderboardData();
+    }
+
+    function handleLeaderboardData(response) {
+      const statusEl = document.getElementById('status');
+      
+      if (response.paused) {
+        statusEl.textContent = '⏸ Updates Paused';
+        statusEl.className = 'status paused';
+        
+        if (cachedData && cachedData.length > 0) {
+          displayLeaderboard(cachedData);
+        } else {
+          const content = document.getElementById('leaderboard-content');
+          content.innerHTML = '<div class="paused-message">Leaderboard updates paused</div>';
+        }
+        return;
+      }
+      
+      statusEl.textContent = '🔴 Live';
+      statusEl.className = 'status live';
+      
+      cachedData = response.data;
+      displayLeaderboard(response.data);
+    }
+
+    function displayLeaderboard(data) {
+      const content = document.getElementById('leaderboard-content');
+      
+      if (!data || data.length === 0) {
+        content.innerHTML = '<div class="no-data">No scores yet. Waiting for submissions...</div>';
+        return;
+      }
+      
+      let html = '';
+      data.forEach(row => {
+        const rankClass = row.rank <= 3 ? 'rank-' + row.rank : '';
+        html += `
+          <div class="table-row">
+            <div class="rank ${rankClass}">${row.rank}</div>
+            <div class="table-name">Table ${row.tableNumber}</div>
+            <div class="score">${row.totalScore.toFixed(2)}</div>
+            <div class="questions">${row.questionsAnswered} questions</div>
+          </div>
+        `;
+      });
+      
+      content.innerHTML = html;
+      
+      const now = new Date();
+      document.getElementById('last-updated').textContent = 
+        'Last updated: ' + now.toLocaleTimeString();
+    }
+
+    function showError(error) {
+      const content = document.getElementById('leaderboard-content');
+      content.innerHTML = '<div class="no-data">Error loading leaderboard: ' + error.message + '</div>';
+    }
+
+    loadLeaderboard();
+    setInterval(loadLeaderboard, 5000);
+  </script>
+</body>
+</html>
