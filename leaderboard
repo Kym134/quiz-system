@@ -3,57 +3,96 @@
 <head>
   <base target="_top">
   <style>
-    body {
-      font-family: Helvetica Neue,Helvetica,Arial,sans-serif; 
+    * {
       margin: 0;
-      padding: 40px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
+      padding: 0;
+      box-sizing: border-box;
     }
+
+    body {
+      font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+      background: #FFFFFF;
+      min-height: 100vh;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .container {
-      max-width: 1200px;
+      width: 100%;
+      max-width: 1600px;
       margin: 0 auto;
     }
+
     h1 {
       text-align: center;
-      color: white;
-      font-size: 48px;
-      margin-bottom: 40px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      color: #003A70;
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
     }
+
+    .status {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: #F5F5F5;
+    }
+
+    .status.live {
+      color: #008A52;
+      background: #E8F5E9;
+    }
+
+    .status.paused {
+      color: #FF6B6B;
+      background: #FFE5E5;
+    }
+
     .leaderboard {
-      background: white;
+      background: #FFFFFF;
       border-radius: 12px;
-      padding: 30px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      padding: 2rem;
+      box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+      border: 4px solid #005BAA;
     }
+
     #leaderboard-content {
       transition: opacity 0.3s ease;
     }
+
     #leaderboard-content.updating {
       opacity: 0.7;
     }
+
     .table-header {
       display: grid;
-      grid-template-columns: 80px 1fr 150px 150px;
-      gap: 20px;
-      padding: 15px 20px;
-      background: #f5f5f5;
+      grid-template-columns: 100px 1fr 200px 200px;
+      gap: 1.5rem;
+      padding: 1rem 1.5rem;
+      background: #F5F5F5;
       border-radius: 8px;
       font-weight: 600;
-      color: #666;
-      margin-bottom: 10px;
+      color: #424242;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
     }
+
     .table-row {
       display: grid;
-      grid-template-columns: 80px 1fr 150px 150px;
-      gap: 20px;
-      padding: 20px;
-      border-bottom: 1px solid #e0e0e0;
-      transition: background 0.2s;
+      grid-template-columns: 100px 1fr 200px 200px;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      border-bottom: 1px solid #E8E8E8;
+      transition: all 0.3s ease;
       align-items: center;
       animation: fadeIn 0.3s ease-in;
     }
+
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -64,66 +103,144 @@
         transform: translateY(0);
       }
     }
+
     .table-row:hover {
-      background: #f8f9fa;
+      background: #F5F5F5;
+      transform: translateY(-2px);
     }
+
     .table-row:last-child {
       border-bottom: none;
     }
+
     .rank {
-      font-size: 32px;
+      font-size: 2.5rem;
       font-weight: 700;
       text-align: center;
+      color: #424242;
     }
-    .rank-1 { color: #ffd700; }
-    .rank-2 { color: #c0c0c0; }
-    .rank-3 { color: #cd7f32; }
+
+    .rank-1 {
+      color: #FFD700;
+      text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.3);
+    }
+
+    .rank-2 {
+      color: #C0C0C0;
+      text-shadow: 2px 2px 4px rgba(192, 192, 192, 0.3);
+    }
+
+    .rank-3 {
+      color: #CD7F32;
+      text-shadow: 2px 2px 4px rgba(205, 127, 50, 0.3);
+    }
+
     .table-name {
-      font-size: 24px;
+      font-size: 1.75rem;
       font-weight: 600;
+      color: #003A70;
     }
+
     .score {
-      font-size: 28px;
+      font-size: 2rem;
       font-weight: 700;
-      color: #1a73e8;
+      color: #0066CC;
       text-align: center;
     }
+
     .questions {
-      font-size: 16px;
-      color: #666;
+      font-size: 1.125rem;
+      color: #424242;
       text-align: center;
+      font-weight: 500;
     }
+
     .no-data {
       text-align: center;
-      padding: 60px;
-      color: #666;
-      font-size: 20px;
+      padding: 4rem 2rem;
+      color: #9E9E9E;
+      font-size: 1.5rem;
     }
+
     .paused-message {
       text-align: center;
-      padding: 60px;
-      color: #ea4335;
-      font-size: 24px;
+      padding: 4rem 2rem;
+      color: #FF6B6B;
+      font-size: 1.75rem;
       font-weight: 600;
     }
+
     .last-updated {
       text-align: center;
-      color: white;
-      margin-top: 20px;
-      font-size: 14px;
+      color: #9E9E9E;
+      margin-top: 1.5rem;
+      font-size: 0.875rem;
     }
-    .status {
-      text-align: center;
-      color: white;
-      margin-bottom: 20px;
-      font-size: 16px;
-      font-weight: 600;
+
+    /* 16:9 Optimizations for projection */
+    @media (min-aspect-ratio: 16/9) {
+      body {
+        padding: 1.5rem 3rem;
+      }
+
+      h1 {
+        font-size: 3.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .leaderboard {
+        padding: 2.5rem;
+      }
+
+      .table-header {
+        font-size: 1.125rem;
+        padding: 1.25rem 2rem;
+      }
+
+      .table-row {
+        padding: 2rem;
+      }
+
+      .rank {
+        font-size: 3rem;
+      }
+
+      .table-name {
+        font-size: 2rem;
+      }
+
+      .score {
+        font-size: 2.25rem;
+      }
+
+      .questions {
+        font-size: 1.25rem;
+      }
     }
-    .status.live {
-      color: #4ade80;
-    }
-    .status.paused {
-      color: #fbbf24;
+
+    /* Smaller screens */
+    @media (max-width: 1200px) {
+      .table-header,
+      .table-row {
+        grid-template-columns: 80px 1fr 150px 150px;
+        gap: 1rem;
+      }
+
+      .rank {
+        font-size: 2rem;
+      }
+
+      .table-name {
+        font-size: 1.5rem;
+      }
+
+      .score {
+        font-size: 1.75rem;
+      }
+
+      .questions {
+        font-size: 1rem;
+      }
     }
   </style>
 </head>
