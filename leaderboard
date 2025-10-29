@@ -250,7 +250,12 @@
 
   <script>
     /* ---------- Geometry helpers ---------- */
+    const stageEl = document.getElementById('stage');
     const champCircle = document.getElementById('champ-circle');
+    const championPill = document.getElementById('champion-pill');
+    const secondBadge = document.getElementById('second-badge');
+    const thirdBadge  = document.getElementById('third-badge');
+    const badgesHost  = document.getElementById('badges');
     const isNarrow = () => window.innerWidth <= 480;
 
     function positionElementAt(el, x, y){
@@ -259,12 +264,36 @@
 
     function getPath(i){ return document.getElementById(`track-${i}`); }
 
+    function svgPointToStage(element, point){
+      const svg = element?.ownerSVGElement || element;
+      if (!svg || !stageEl) return { x: point.x, y: point.y };
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return { x: point.x, y: point.y };
+      let domPoint;
+      if (typeof DOMPoint === 'function'){
+        domPoint = new DOMPoint(point.x, point.y);
+      } else if (svg.createSVGPoint){
+        domPoint = svg.createSVGPoint();
+        domPoint.x = point.x;
+        domPoint.y = point.y;
+      } else {
+        return { x: point.x, y: point.y };
+      }
+      const transformed = domPoint.matrixTransform(ctm);
+      const rect = stageEl.getBoundingClientRect();
+      return {
+        x: transformed.x - rect.left,
+        y: transformed.y - rect.top
+      };
+    }
+
     function pathPoint(track, percent){
       const p = getPath(track);
+      if (!p) return { x: 0, y: 0 };
       const len = p.getTotalLength();
       const dist = Math.max(0, Math.min(1, percent)) * len;
       const pt = p.getPointAtLength(dist);
-      return { x: pt.x, y: pt.y };
+      return svgPointToStage(p, pt);
     }
 
     /* ---------- Fixed layout init ---------- */
@@ -294,7 +323,8 @@
       });
 
       // centre the champion pill
-      positionElementAt(document.getElementById('champion-pill'), cx, cy);
+      const center = svgPointToStage(champCircle, { x: cx, y: cy });
+      positionElementAt(championPill, center.x, center.y);
     }
 
     /* ---------- Data + ranking ---------- */
@@ -363,11 +393,6 @@
     }
 
     /* ---------- Rendering ---------- */
-    const championPill = document.getElementById('champion-pill');
-    const secondBadge = document.getElementById('second-badge');
-    const thirdBadge  = document.getElementById('third-badge');
-    const badgesHost  = document.getElementById('badges');
-
     function ensureStdBadgeEl(key){
       let el = document.querySelector(`[data-key="std-${key}"]`);
       if (!el){
@@ -382,9 +407,10 @@
     function renderChampion(t){
       const cx = parseFloat(champCircle.getAttribute('cx'));
       const cy = parseFloat(champCircle.getAttribute('cy'));
+      const { x, y } = svgPointToStage(champCircle, { x: cx, y: cy });
       championPill.querySelector('.lb-pill-text').textContent =
         `Table ${t.table} | ${Math.round(t.points)} pts`;
-      animateMove(championPill, cx, cy);
+      animateMove(championPill, x, y);
       championPill.style.opacity = 1;
     }
 
