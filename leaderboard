@@ -1,388 +1,529 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base target="_top">
+  <base target="_top" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root{
+      /* token fallbacks only - your CSS can override these */
+      --bg-surface: #F5F7FA;
+      --text-strong: #2C3E50;
+      --text-muted: #546E7A;
+      --track-1: #00B4ED; /* top */
+      --track-2: #89BA17;
+      --track-3: #FFE900;
+      --track-4: #005BAA; /* bottom */
+      --gold: #D4AF37;
+      --highlight: #FFF7CC;
+      --shadow-1: 0 2px 4px rgba(0,0,0,0.08);
+      --shadow-2: 0 4px 12px rgba(0,0,0,0.10);
+      --radius-6: 6px;
+      --radius-8: 8px;
+      --radius-12: 12px;
+      --badge-font: 14px;
     }
 
-    body {
-      font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
-      background: #FFFFFF;
-      min-height: 100vh;
-      padding: 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 1600px;
-      margin: 0 auto;
-    }
-
-    h1 {
-      text-align: center;
-      color: #003A70;
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      font-weight: 700;
-    }
-
-    .status {
-      text-align: center;
-      margin-bottom: 2rem;
-      font-size: 1.125rem;
-      font-weight: 600;
-      padding: 0.75rem;
-      border-radius: 8px;
-      background: #F5F5F5;
-    }
-
-    .status.live {
-      color: #008A52;
-      background: #E8F5E9;
-    }
-
-    .status.paused {
-      color: #FF6B6B;
-      background: #FFE5E5;
-    }
-
-    .leaderboard {
-      background: #FFFFFF;
-      border-radius: 12px;
-      padding: 2rem;
-      box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
-      border: 4px solid #005BAA;
-    }
-
-    #leaderboard-content {
-      transition: opacity 0.3s ease;
-    }
-
-    #leaderboard-content.updating {
-      opacity: 0.7;
-    }
-
-    .table-header {
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body{
+      font-family: var(--font-game, Helvetica Neue, Helvetica, Arial, sans-serif);
+      background: var(--bg-surface);
+      color: var(--text-strong);
       display: grid;
-      grid-template-columns: 100px 1fr 200px 200px;
-      gap: 1.5rem;
-      padding: 1rem 1.5rem;
-      background: #F5F5F5;
-      border-radius: 8px;
-      font-weight: 600;
-      color: #424242;
-      margin-bottom: 0.5rem;
-      font-size: 1rem;
+      place-items: center;
+      padding: clamp(8px, 2vmin, 24px);
     }
 
-    .table-row {
-      display: grid;
-      grid-template-columns: 100px 1fr 200px 200px;
-      gap: 1.5rem;
-      padding: 1.5rem;
-      border-bottom: 1px solid #E8E8E8;
-      transition: all 0.3s ease;
+    /* Canvas container 16:9 */
+    .lb-canvas{
+      width: min(100vw, 178vh);
+      aspect-ratio: 16 / 9;
+      background: var(--bg-surface);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .lb-header{
+      position: absolute;
+      top: clamp(12px, 2.2vmin, 24px);
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 3;
+      pointer-events: none;
+    }
+    .lb-title{
+      font-weight: 600;
+      font-size: clamp(22px, 3.3vmin, 36px);
+      color: var(--text-strong);
+    }
+    .lb-subtitle{
+      margin-top: 8px;
+      font-weight: 400;
+      font-size: clamp(16px, 2.2vmin, 24px);
+      color: var(--text-muted);
+    }
+
+    /* Stage area below header */
+    .lb-stage{
+      position: absolute;
+      inset: clamp(64px, 10vmin, 120px) clamp(16px, 2.2vmin, 24px) clamp(16px, 2.2vmin, 24px);
+    }
+
+    /* SVG layer ordering */
+    svg.lb-paths{ position: absolute; inset: 0; z-index: 0; }
+
+    /* Tracks */
+    .lb-track{
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: clamp(28px, 4.5vmin, 40px); /* responsive thickness */
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.05));
+    }
+    .t1{ stroke: var(--track-1); }
+    .t2{ stroke: var(--track-2); }
+    .t3{ stroke: var(--track-3); }
+    .t4{ stroke: var(--track-4); }
+
+    /* Champion rings and circle above tracks */
+    #champ-circle, #ring-1, #ring-2, #ring-3, #ring-4{ position: relative; z-index: 1; }
+    .lb-champion-target{ filter: drop-shadow(0 6px 14px rgba(0,0,0,0.08)); }
+
+    /* Champion pill */
+    .lb-champion-pill{
+      position: absolute;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: var(--radius-12);
+      padding: 16px;
+      box-shadow: var(--shadow-2);
+      font-size: calc(1.25 * var(--badge-font));
+      color: var(--text-strong);
+      pointer-events: none;
+      min-width: 180px;
+      text-align: center;
+      z-index: 2;
+    }
+    .lb-pill-indicator{
+      position: absolute;
+      top: -8px; right: -8px;
+      border: 2px solid var(--gold);
+      background: var(--highlight);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-weight: 700;
+    }
+
+    /* Badges */
+    .lb-badge{
+      position: absolute;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: var(--radius-6);
+      box-shadow: var(--shadow-1);
+      padding: 8px 16px;
+      font-size: var(--badge-font);
+      color: var(--text-strong);
+      will-change: transform, opacity;
+      min-height: 40px;
+      min-width: 40px; /* 40x40 min tap target */
+      display: inline-flex;
       align-items: center;
-      animation: fadeIn 0.3s ease-in;
+      gap: 8px;
+      white-space: nowrap;
+      z-index: 2;
+    }
+    .lb-badge .lb-chip{
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.85em;
     }
 
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .lb-badge--second{
+      border: 3px solid #C0C0C0;
+      border-radius: var(--radius-8);
+      padding: 12px 20px;
+      font-size: 18px;
+    }
+    .lb-badge--second .lb-chip{ background: #E0E0E0; }
+
+    .lb-badge--third{
+      border: 3px solid #CD7F32;
+      border-radius: var(--radius-8);
+      padding: 12px 20px;
+      font-size: 18px;
+    }
+    .lb-badge--third .lb-chip{ background: #F4E4C1; }
+
+    .lb-badge--std{
+      border-radius: var(--radius-6);
+      box-shadow: var(--shadow-1);
+      padding: 8px 16px;
+      font-size: var(--badge-font);
     }
 
-    .table-row:hover {
-      background: #F5F5F5;
-      transform: translateY(-2px);
-    }
-
-    .table-row:last-child {
-      border-bottom: none;
-    }
-
-    .rank {
-      font-size: 2.5rem;
-      font-weight: 700;
+    /* Status + timestamp */
+    .lb-status{
+      position: absolute;
+      left: 50%;
+      bottom: 8px;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: var(--text-muted);
+      opacity: 0.9;
       text-align: center;
-      color: #424242;
+      z-index: 3;
     }
 
-    .rank-1 {
-      color: #FFD700;
-      text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.3);
+    /* Responsive */
+    @media (max-width: 768px){
+      .lb-track{ stroke-width: 28px; }
+      .lb-champion-pill{ font-size: calc(1.25 * 12px); padding: 12px; min-width: 140px; }
+      .lb-badge{ font-size: 12px; padding: 6px 12px; white-space: normal; }
     }
-
-    .rank-2 {
-      color: #C0C0C0;
-      text-shadow: 2px 2px 4px rgba(192, 192, 192, 0.3);
-    }
-
-    .rank-3 {
-      color: #CD7F32;
-      text-shadow: 2px 2px 4px rgba(205, 127, 50, 0.3);
-    }
-
-    .table-name {
-      font-size: 1.75rem;
-      font-weight: 600;
-      color: #003A70;
-    }
-
-    .score {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #0066CC;
-      text-align: center;
-    }
-
-    .questions {
-      font-size: 1.125rem;
-      color: #424242;
-      text-align: center;
-      font-weight: 500;
-    }
-
-    .no-data {
-      text-align: center;
-      padding: 4rem 2rem;
-      color: #9E9E9E;
-      font-size: 1.5rem;
-    }
-
-    .paused-message {
-      text-align: center;
-      padding: 4rem 2rem;
-      color: #FF6B6B;
-      font-size: 1.75rem;
-      font-weight: 600;
-    }
-
-    .last-updated {
-      text-align: center;
-      color: #9E9E9E;
-      margin-top: 1.5rem;
-      font-size: 0.875rem;
-    }
-
-    /* 16:9 Optimizations for projection */
-    @media (min-aspect-ratio: 16/9) {
-      body {
-        padding: 1.5rem 3rem;
-      }
-
-      h1 {
-        font-size: 3.5rem;
-        margin-bottom: 1.5rem;
-      }
-
-      .leaderboard {
-        padding: 2.5rem;
-      }
-
-      .table-header {
-        font-size: 1.125rem;
-        padding: 1.25rem 2rem;
-      }
-
-      .table-row {
-        padding: 2rem;
-      }
-
-      .rank {
-        font-size: 3rem;
-      }
-
-      .table-name {
-        font-size: 2rem;
-      }
-
-      .score {
-        font-size: 2.25rem;
-      }
-
-      .questions {
-        font-size: 1.25rem;
-      }
-    }
-
-    /* Smaller screens */
-    @media (max-width: 1200px) {
-      .table-header,
-      .table-row {
-        grid-template-columns: 80px 1fr 150px 150px;
-        gap: 1rem;
-      }
-
-      .rank {
-        font-size: 2rem;
-      }
-
-      .table-name {
-        font-size: 1.5rem;
-      }
-
-      .score {
-        font-size: 1.75rem;
-      }
-
-      .questions {
-        font-size: 1rem;
-      }
+    @media (max-width: 480px){
+      /* fade-only handled in JS */
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🏆 Quiz Leaderboard</h1>
-    <div class="status" id="status"></div>
-    <div class="leaderboard">
-      <div class="table-header">
-        <div>Rank</div>
-        <div>Table</div>
-        <div>Total Score</div>
-        <div>Questions</div>
+  <div class="lb-canvas" id="leaderboard">
+    <header class="lb-header">
+      <div class="lb-title">Clear Path - Connected Future</div>
+      <div class="lb-subtitle">Leaderboard</div>
+    </header>
+
+    <div class="lb-stage" id="stage">
+      <!-- Fixed-geometry paths and champion circle that match the reference image -->
+      <svg class="lb-paths" id="paths" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <defs>
+          <radialGradient id="champGrad" cx="50%" cy="50%" r="70%">
+            <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.90"/>
+            <stop offset="55%" stop-color="#ffffff" stop-opacity="0.65"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+          </radialGradient>
+        </defs>
+
+        <!-- TRACKS -->
+        <path id="track-1" class="lb-track t1" d="M 80 250 L 1020 250 C 1090 250, 1130 300, 1190 360 C 1210 380, 1230 400, 1260 430" />
+        <path id="track-2" class="lb-track t2" d="M 80 350 L 980 350 C 1080 350, 1115 365, 1200 430 C 1215 440, 1235 455, 1260 470" />
+        <path id="track-3" class="lb-track t3" d="M 80 470 L 1270 470" />
+        <path id="track-4" class="lb-track t4" d="M 80 590 L 980 590 C 1080 590, 1120 560, 1200 520 C 1220 510, 1240 500, 1270 490" />
+
+        <!-- CONCENTRIC RINGS -->
+        <circle id="ring-4" cx="1370" cy="510" r="100" fill="none" stroke="var(--track-4, #005BAA)" stroke-width="26" />
+        <circle id="ring-3" cx="1370" cy="510" r="74"  fill="none" stroke="var(--track-3, #FFE900)" stroke-width="26" />
+        <circle id="ring-2" cx="1370" cy="510" r="50"  fill="none" stroke="var(--track-2, #89BA17)" stroke-width="26" />
+        <circle id="ring-1" cx="1370" cy="510" r="28"  fill="none" stroke="var(--track-1, #00B4ED)" stroke-width="26" />
+
+        <!-- Inner glow -->
+        <circle id="champ-circle" class="lb-champion-target" cx="1370" cy="510" r="105" fill="url(#champGrad)" />
+      </svg>
+
+      <!-- Champion pill -->
+      <div id="champion-pill" class="lb-champion-pill" role="status" aria-live="polite">
+        <span class="lb-pill-text">Table 1 | 0 pts</span>
+        <span class="lb-pill-indicator" aria-label="first place">1st</span>
       </div>
-      <div id="leaderboard-content">
-        <div class="no-data">Loading...</div>
+
+      <!-- Second / Third -->
+      <div id="second-badge" class="lb-badge lb-badge--second">
+        <span class="lb-badge-text">Table 2 | 2nd | 0 pts</span>
+        <span class="lb-chip">2nd</span>
       </div>
+      <div id="third-badge" class="lb-badge lb-badge--third">
+        <span class="lb-badge-text">Table 3 | 3rd | 0 pts</span>
+        <span class="lb-chip">3rd</span>
+      </div>
+
+      <!-- Standard badges live here -->
+      <div id="badges"></div>
     </div>
-    <div class="last-updated" id="last-updated"></div>
+
+    <div class="lb-status">
+      <div id="status">Live</div>
+      <div id="last-updated"></div>
+    </div>
   </div>
 
   <script>
-    let cachedData = null;
-    let isLoading = false; // Prevent overlapping requests
-    let pollInterval = null;
-    let lastDataHash = null; // Track if data actually changed
+    /* ---------- Geometry helpers ---------- */
+    const champCircle = document.getElementById('champ-circle');
+    const isNarrow = () => window.innerWidth <= 480;
 
-    // Simple hash function to detect data changes
-    function hashData(data) {
-      if (!data || data.length === 0) return 'empty';
-      return data.map(row =>
-        `${row.rank}-${row.tableNumber}-${row.totalScore}-${row.questionsAnswered}`
-      ).join('|');
+    function positionElementAt(el, x, y){
+      el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
     }
 
-    function loadLeaderboard() {
-      // Prevent overlapping requests
-      if (isLoading) return;
+    function getPath(i){ return document.getElementById(`track-${i}`); }
 
+    function pathPoint(track, percent){
+      const p = getPath(track);
+      const len = p.getTotalLength();
+      const dist = Math.max(0, Math.min(1, percent)) * len;
+      const pt = p.getPointAtLength(dist);
+      return { x: pt.x, y: pt.y };
+    }
+
+    /* ---------- Fixed layout init ---------- */
+    function buildTracks(){
+      // champion circle and rings scale for small screens
+      const small = window.innerWidth < 768;
+      const cx = 1370;
+      const cy = 510;
+      const R  = small ? 70 : 105;
+
+      champCircle.setAttribute('cx', cx);
+      champCircle.setAttribute('cy', cy);
+      champCircle.setAttribute('r', R);
+
+      const ringCfg = [
+        { id: 'ring-4', r: small ? 66 : 100, w: small ? 18 : 26 },
+        { id: 'ring-3', r: small ? 49 : 74,  w: small ? 18 : 26 },
+        { id: 'ring-2', r: small ? 34 : 50,  w: small ? 18 : 26 },
+        { id: 'ring-1', r: small ? 20 : 28,  w: small ? 18 : 26 },
+      ];
+      ringCfg.forEach(({id, r, w}) => {
+        const el = document.getElementById(id);
+        el.setAttribute('cx', cx);
+        el.setAttribute('cy', cy);
+        el.setAttribute('r', r);
+        el.setAttribute('stroke-width', w);
+      });
+
+      // centre the champion pill
+      positionElementAt(document.getElementById('champion-pill'), cx, cy);
+    }
+
+    /* ---------- Data + ranking ---------- */
+    let cachedHash = null;
+    let polling = null;
+    let isLoading = false;
+
+    function hashData(rows){
+      if (!rows || !rows.length) return 'empty';
+      return rows.map(r => `${r.tableNumber}|${r.totalScore}`).join('|');
+    }
+
+    function toOrdinal(n){
+      const s = ["th","st","nd","rd"], v = n % 100;
+      return n + (s[(v-20)%10] || s[v] || s[0]);
+    }
+
+    function rankTables(rows){
+      const list = rows.map(r => ({
+        table: Number(r.tableNumber),
+        points: Number(r.totalScore) || 0,
+        questions: Number(r.questionsAnswered) || 0
+      }));
+      list.sort((a,b) => b.points - a.points || a.table - b.table);
+      return list.slice(0, 25).map((t, i) => ({ ...t, rank: i+1 }));
+    }
+
+    function mapToTracks(ranked){
+      const out = ranked.map(x => ({ ...x, track: 1, pos: 0 }));
+      if (!out.length) return out;
+
+      // Champion
+      out[0].track = 3; out[0].pos = 1.0;
+
+      // 2nd and 3rd anchored near convergence like the reference
+      if (out[1]) { out[1].track = 2; out[1].pos = 0.96; }
+      if (out[2]) { out[2].track = 3; out[2].pos = 0.92; }
+
+      // Remaining: ranks 4–6 => t1, 7–9 => t2, 10–12 => t3, 13+ => t4
+      const rem = out.slice(3);
+      const buckets = [[],[],[],[]];
+      rem.forEach(t => {
+        const r = t.rank;
+        let b = 3;
+        if (r >= 4 && r <= 6) b = 0;
+        else if (r >= 7 && r <= 9) b = 1;
+        else if (r >= 10 && r <= 12) b = 2;
+        buckets[b].push(t);
+      });
+
+      const few = out.length < 10;
+      buckets.forEach((bucket, i) => {
+        const track = i + 1;
+        const n = bucket.length;
+        if (!n) return;
+        const start = few ? 0.25 : 0.10;
+        const end   = few ? 0.72 : 0.78;
+        bucket.forEach((item, j) => {
+          const pos = n === 1 ? (start + end) / 2 : start + j * ((end - start) / (n - 1));
+          item.track = track;
+          item.pos = Math.max(0, Math.min(1, pos));
+        });
+      });
+
+      return out;
+    }
+
+    /* ---------- Rendering ---------- */
+    const championPill = document.getElementById('champion-pill');
+    const secondBadge = document.getElementById('second-badge');
+    const thirdBadge  = document.getElementById('third-badge');
+    const badgesHost  = document.getElementById('badges');
+
+    function ensureStdBadgeEl(key){
+      let el = document.querySelector(`[data-key="std-${key}"]`);
+      if (!el){
+        el = document.createElement('div');
+        el.className = 'lb-badge lb-badge--std';
+        el.dataset.key = `std-${key}`;
+        badgesHost.appendChild(el);
+      }
+      return el;
+    }
+
+    function renderChampion(t){
+      const cx = parseFloat(champCircle.getAttribute('cx'));
+      const cy = parseFloat(champCircle.getAttribute('cy'));
+      championPill.querySelector('.lb-pill-text').textContent =
+        `Table ${t.table} | ${Math.round(t.points)} pts`;
+      animateMove(championPill, cx, cy);
+      championPill.style.opacity = 1;
+    }
+
+    function renderSecondThird(second, third){
+      if (second){
+        const p2 = pathPoint(2, 0.96);
+        secondBadge.querySelector('.lb-badge-text').textContent =
+          `Table ${second.table} | 2nd | ${Math.round(second.points)} pts`;
+        animateMove(secondBadge, p2.x, p2.y);
+        secondBadge.style.opacity = 1;
+      } else {
+        secondBadge.style.opacity = 0;
+      }
+
+      if (third){
+        const p3 = pathPoint(3, 0.92);
+        thirdBadge.querySelector('.lb-badge-text').textContent =
+          `Table ${third.table} | 3rd | ${Math.round(third.points)} pts`;
+        animateMove(thirdBadge, p3.x, p3.y);
+        thirdBadge.style.opacity = 1;
+      } else {
+        thirdBadge.style.opacity = 0;
+      }
+    }
+
+    function renderStandardBadges(items){
+      const alive = new Set();
+      items.forEach(it => {
+        const el = ensureStdBadgeEl(it.table);
+        el.textContent = `${toOrdinal(it.rank)} | Table ${it.table} | ${Math.round(it.points)} pts`;
+        const pt = pathPoint(it.track, it.pos);
+        animateMove(el, pt.x, pt.y);
+        alive.add(`std-${it.table}`);
+      });
+      [...badgesHost.children].forEach(ch => {
+        if (!alive.has(ch.dataset.key)) ch.remove();
+      });
+    }
+
+    /* ---------- Animations ---------- */
+    function animateMove(el, x, y){
+      const fadeOnly = isNarrow();
+      if (fadeOnly){
+        el.style.transition = 'opacity 250ms ease-in-out';
+        positionElementAt(el, x, y);
+        el.style.opacity = 1;
+        return;
+      }
+      const dur = 400 + Math.floor(Math.random() * 300); // 400–700ms
+      el.style.transition = `transform ${dur}ms ease-in-out`;
+      positionElementAt(el, x, y);
+    }
+
+    /* ---------- Status / timestamp ---------- */
+    function setStatus(text, paused){
+      const s = document.getElementById('status');
+      s.textContent = paused ? 'Updates paused' : 'Live';
+      s.style.color = paused ? '#9E9E9E' : '#2E7D32';
+    }
+    function touchTimestamp(){
+      const now = new Date().toLocaleTimeString();
+      document.getElementById('last-updated').textContent = `Last updated: ${now}`;
+    }
+
+    /* ---------- Data flow ---------- */
+    function handleResponse(resp){
+      if (resp?.paused){
+        setStatus('Updates paused', true);
+        touchTimestamp();
+        return;
+      }
+      setStatus('Live', false);
+
+      const rows = Array.isArray(resp?.data) ? resp.data : [];
+      const newHash = hashData(rows);
+      if (newHash === cachedHash){
+        touchTimestamp();
+        return;
+      }
+      cachedHash = newHash;
+
+      const ranked = rankTables(rows);
+      const mapped = mapToTracks(ranked);
+
+      if (!mapped.length){
+        championPill.style.opacity = 0;
+        secondBadge.style.opacity = 0;
+        thirdBadge.style.opacity = 0;
+        badgesHost.innerHTML = '';
+        touchTimestamp();
+        return;
+      }
+
+      renderChampion(mapped[0]);
+      renderSecondThird(mapped[1], mapped[2]);
+      renderStandardBadges(mapped.slice(3));
+      touchTimestamp();
+    }
+
+    function loadLeaderboard(){
+      if (isLoading) return;
       isLoading = true;
       google.script.run
-        .withSuccessHandler(data => {
+        .withSuccessHandler((data) => { isLoading = false; handleResponse(data); })
+        .withFailureHandler((err) => {
           isLoading = false;
-          handleLeaderboardData(data);
-        })
-        .withFailureHandler(error => {
-          isLoading = false;
-          showError(error);
+          setStatus('Error', true);
+          touchTimestamp();
+          console && console.warn && console.warn('Leaderboard load error', err);
         })
         .getLeaderboardData();
     }
 
-    function handleLeaderboardData(response) {
-      const statusEl = document.getElementById('status');
-
-      if (response.paused) {
-        statusEl.textContent = '⏸ Updates Paused';
-        statusEl.className = 'status paused';
-
-        if (cachedData && cachedData.length > 0) {
-          // Don't update display, keep showing cached data
-          updateTimestamp();
-        } else {
-          const content = document.getElementById('leaderboard-content');
-          content.innerHTML = '<div class="paused-message">Leaderboard updates paused</div>';
-          updateTimestamp();
-        }
-        return;
-      }
-
-      statusEl.textContent = '🔴 Live';
-      statusEl.className = 'status live';
-
-      // Check if data actually changed
-      const newHash = hashData(response.data);
-      if (newHash !== lastDataHash) {
-        lastDataHash = newHash;
-        cachedData = response.data;
-        displayLeaderboard(response.data);
-      } else {
-        // Data hasn't changed, just update timestamp
-        updateTimestamp();
-      }
-    }
-
-    function displayLeaderboard(data) {
-      const content = document.getElementById('leaderboard-content');
-
-      if (!data || data.length === 0) {
-        content.innerHTML = '<div class="no-data">No scores yet. Waiting for submissions...</div>';
-        updateTimestamp();
-        return;
-      }
-
-      // Optimize HTML generation using array.map() and join()
-      const html = data.map(row => {
-        const rankClass = row.rank <= 3 ? `rank-${row.rank}` : '';
-        return `
-          <div class="table-row">
-            <div class="rank ${rankClass}">${row.rank}</div>
-            <div class="table-name">Table ${row.tableNumber}</div>
-            <div class="score">${row.totalScore.toFixed(2)}</div>
-            <div class="questions">${row.questionsAnswered} questions</div>
-          </div>
-        `;
-      }).join('');
-
-      content.innerHTML = html;
-      updateTimestamp();
-    }
-
-    function updateTimestamp() {
-      const now = new Date();
-      document.getElementById('last-updated').textContent =
-        'Last updated: ' + now.toLocaleTimeString();
-    }
-
-    function showError(error) {
-      const content = document.getElementById('leaderboard-content');
-      const statusEl = document.getElementById('status');
-
-      content.innerHTML = '<div class="no-data">Error loading leaderboard: ' + (error.message || 'Unknown error') + '</div>';
-      statusEl.textContent = '⚠ Connection Error';
-      statusEl.className = 'status paused';
-
-      updateTimestamp();
-    }
-
-    function startPolling() {
-      // Clear any existing polling interval
-      if (pollInterval) clearInterval(pollInterval);
-
-      // Initial load
+    function start(){
+      buildTracks();
       loadLeaderboard();
-
-      // Poll for updates every 5 seconds
-      // The isLoading flag prevents overlapping requests
-      pollInterval = setInterval(loadLeaderboard, 5000);
+      if (polling) clearInterval(polling);
+      polling = setInterval(loadLeaderboard, 5000);
     }
 
-    // Start the application
-    startPolling();
+    /* ---------- Resize handling ---------- */
+    let resizeRAF = null;
+    window.addEventListener('resize', () => {
+      if (resizeRAF) cancelAnimationFrame(resizeRAF);
+      resizeRAF = requestAnimationFrame(() => {
+        buildTracks();
+        document.querySelectorAll('.lb-badge, .lb-champion-pill').forEach(el => {
+          el.style.transition = 'none';
+        });
+        setTimeout(() => {
+          document.querySelectorAll('.lb-badge, .lb-champion-pill').forEach(el => {
+            el.style.transition = '';
+          });
+        }, 0);
+      });
+    });
+
+    // Init
+    start();
   </script>
 </body>
 </html>
