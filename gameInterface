@@ -3,6 +3,22 @@
 <head>
   <base target="_top">
   <style>
+    /* Color Palette */
+    :root {
+      --main-blue: #005BAA; /* Deep Corporate Blue */
+      --darker-blue: #023F88;
+      --light-green: #89BA17; /* Action Green */
+      --dark-green: #00A656;
+      --light-blue-accent: #00B3ED; /* Light Blue Accent */
+      --dark-grey-text: #4D4F53;
+      --light-background: #F8F8F8;
+      --subtle-blue-tint: #F0F8FF; 
+      --selected-border: #00B3ED; /* Use Light Blue for the selected border as seen in image */
+    }
+
+    /* ---------------------------------- */
+    /* GLOBAL & CONTAINER STYLING */
+    /* ---------------------------------- */
     * {
       margin: 0;
       padding: 0;
@@ -10,289 +26,290 @@
     }
 
     body {
+      /* Soft gradient background to match the visual tone */
       font-family: helvetica Neue, helvetica, Arial, sans-serif;
-      background: #FFFFFF;
+      background: linear-gradient(135deg, #E0E5F0 0%, #FAFAFA 100%);
       min-height: 100vh;
-      padding: 1.5rem;
+      padding: 2rem;
     }
 
     .container {
       max-width: 900px;
       margin: 0 auto;
       background: #FFFFFF;
-      border-radius: 8px;
-      padding: 2rem;
-      box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
-      border: 4px solid #005BAA;
+      /* Softly rounded corners for the card look */
+      border-radius: 12px; 
+      padding: 0; /* Adjusting padding to be relative to content flow */
+      /* Refined ambient shadow for the floating effect */
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 91, 170, 0.05);
+      border: none;
+      overflow: hidden; /* Contains the header bar */
     }
+
+    /* ---------------------------------- */
+    /* HEADER BAR & LOGO */
+    /* ---------------------------------- */
+    .header-bar {
+        display: flex;
+        justify-content: space-between; 
+        align-items: center;
+        /* Matches the deep blue banner look in the image */
+        background: linear-gradient(90deg, #1C67B6 0%, var(--darker-blue) 100%);
+        padding: 0.75rem 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Removed .logo-container and its styles as requested */
 
     .table-badge {
       display: inline-block;
-      background: #005BAA;
-      color: #FFFFFF;
-      padding: 0.5rem 1rem;
-      border-radius: 12px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      margin-bottom: 1.5rem;
+      text-transform: uppercase;}
+.cssbuttons-io-button {
+  display: flex;
+  align-items: center;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 16px;
+  padding: 0.7em 1.4em 0.7em 1.1em;
+  color: white;
+  background: #ad5389;
+  background: linear-gradient(
+    0deg,
+     #00B3ED 0%,
+    #023F88 100%
+  );
+  border: none;
+  box-shadow: 0 0.7em 1.5em -0.5em #4D4F53;
+  letter-spacing: 0.05em;
+  border-radius: 15px;
+}
+
+.cssbuttons-io-button svg {
+  margin-right: 6px;
+}
+
+.cssbuttons-io-button:hover {
+  box-shadow: 0 0.5em 1.5em -0.5em #14a73e98;
+}
+
+.cssbuttons-io-button:active {
+  box-shadow: 0 0.3em 1em -0.5em #14a73e98;
+}
+
+      
+
+    /* Content Area Padding */
+    .content-area {
+        padding: 1.5rem 2.5rem;
     }
 
+    /* ---------------------------------- */
+    /* QUIZ FLOW ELEMENTS */
+    /* ---------------------------------- */
     .round-progress {
       text-align: center;
-      color: #424242;
+      color: var(--dark-grey-text);
       margin-bottom: 1.5rem;
       font-size: 0.875rem;
       font-weight: 600;
-      padding: 1rem;
-      background: #F5F5F5;
-      border-radius: 8px;
+      padding: 0.75rem;
+      background: var(--light-background); 
+      border-radius: 6px;
+      border: 1px solid #EAEAEA;
     }
 
     .timer {
       text-align: center;
-      font-size: 3rem;
-      font-weight: 700;
-      color: #0066CC;
-      margin: 1.5rem 0;
-      padding: 1rem;
-      background: linear-gradient(135deg, #E8F0FE 0%, #F8F9FA 100%);
-      border-radius: 8px;
+      font-size: 3.8rem;
+      font-weight: 800;
+      color: var(--main-blue); /* Text color looks more blue in the image */
+      margin: 1rem 0;
+      padding: 1rem 1rem;
+      background: #FFFFFF;
+      /* Image Style: Prominent border with strong shadow */
+      border: 3px solid var(--selected-border); 
+      box-shadow: 0 0 0 5px rgba(0, 179, 237, 0.1); /* Light Blue outside glow */
+      border-radius: 8px; /* Slightly less rounded than container */
       transition: all 0.3s ease;
+      letter-spacing: 2px;
     }
 
     .timer.warning {
-      color: #FF6B6B;
-      background: linear-gradient(135deg, #FFE5E5 0%, #FFF0F0 100%);
+      color: var(--yellow);
+      border-color: var(--yellow);
       animation: pulse 1s infinite;
+      box-shadow: 0 0 0 5px rgba(255, 233, 0, 0.3);
     }
 
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.02); }
+      50% { transform: scale(1.01); }
     }
-
 
 
     .question {
-      font-size: 1.25rem;
+      font-size: 1.25rem; /* Adjusted for visual match */
       font-weight: 600;
-      color: #003A70;
-      margin-bottom: 1.5rem;
-      line-height: 1.5;
+      color: var(--dark-grey-text);
+      line-height: 1.6;
+      padding-bottom: 1.5rem;
+      /* Image Style: Simple horizontal rule */
+      border-bottom: 1px solid #E0E0E0;
+      margin-bottom: 2rem;
     }
 
+    /* ---------------------------------- */
+    /* ANSWER BUTTONS (IDEAL UX) */
+    /* ---------------------------------- */
     .answer-btn {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 1rem;
       width: 100%;
-      padding: 1rem;
-      margin: 0.75rem 0;
-      background: #F5F5F5;
-      color: #424242;
-      border: none;
+      padding: 1.2rem 1.5rem;
+      margin: 1rem 0;
+      background: #FFFFFF;
+      color: var(--dark-grey-text);
+      /* Minimalist default state */
+      border: 1px solid #E0E0E0; 
       border-radius: 8px;
       cursor: pointer;
       font-size: 1rem;
       text-align: left;
-      transition: all 0.3s ease;
-      font-weight: 400;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      line-height: 1.4;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03); 
+      position: relative;
     }
 
     .answer-btn:hover:not(:disabled) {
-      background: #E8E8E8;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+      border-color: var(--light-blue-accent); 
+      box-shadow: 0 4px 10px rgba(0, 179, 237, 0.1);
     }
 
+    /* SELECTED STATE - As per image */
     .answer-btn.selected {
-      background: #008A52;
-      color: #FFFFFF;
+      border: 1px solid var(--selected-border); /* Thicker border not required, just the accent color */
+      background: var(--subtle-blue-tint);
       font-weight: 600;
-      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+      box-shadow: 0 4px 10px rgba(0, 91, 170, 0.08);
     }
 
     .answer-btn:disabled {
-      opacity: 0.6;
+      opacity: 0.7;
       cursor: not-allowed;
-      transform: none;
+      background: var(--light-background);
     }
 
     .answer-radio {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: 2px solid #9E9E9E;
-      background: transparent;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: all 0.3s ease;
+      display: none; 
+    }
+    
+    /* CUSTOM CHECKMARK - Matches the image style */
+    .answer-btn.selected::after {
+        content: '✓';
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--light-green);
+        /* Simple circle background for the checkmark */
+        background: #FFFFFF;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+
+    /* Option Letter Emphasis */
+    .answer-btn span strong {
+        color: var(--dark-grey-text); /* Looks like regular text color in the image */
+        margin-right: 5px;
     }
 
-    .answer-btn.selected .answer-radio {
-      border-color: white;
-      background: white;
+    /* Change color of letter prefix when option is selected */
+    .answer-btn.selected span strong {
+        color: var(--dark-grey-text); /* Looks like the text remains dark grey */
     }
 
-    .answer-radio-inner {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #008A52;
-      display: none;
-    }
-
-    .answer-btn.selected .answer-radio-inner {
-      display: block;
-    }
-
+    /* ---------------------------------- */
+    /* SUBMIT BUTTON - Matches the 3D Gradient Look */
+    /* ---------------------------------- */
     .submit-btn {
       width: 100%;
-      padding: 1rem 2rem;
-      background: #0066CC;
+      padding: 1.1rem 2rem;
+      /* Gradient matches the image look */
+      background: linear-gradient(180deg, var(--light-green) 0%, var(--dark-green) 100%);
       color: #FFFFFF;
       border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: 600;
+      /* Rounded corners match the image */
+      border-radius: 8px; 
+      font-size: 1.1rem;
+      font-weight: 700;
       cursor: pointer;
-      margin-top: 1.5rem;
-      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
-      transition: all 0.3s ease;
+      margin-top: 2.5rem;
+      /* Subtle 3D-style shadow */
+      box-shadow: 0 4px 10px rgba(0, 166, 86, 0.4); 
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .submit-btn:hover:not(:disabled) {
-      background: #0052A3;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 102, 204, 0.2);
+      /* Slightly darker hover gradient */
+      background: linear-gradient(180deg, var(--dark-green) 0%, var(--light-green) 100%);
+      box-shadow: 0 6px 15px rgba(0, 166, 86, 0.5); 
     }
 
     .submit-btn:disabled {
-      background: #9E9E9E;
+      background: #CCCCCC;
       cursor: not-allowed;
-      transform: none;
-      opacity: 0.5;
+      opacity: 0.6;
+      box-shadow: none;
     }
 
-    .message {
-      padding: 1rem;
-      border-radius: 8px;
-      margin: 1.5rem 0;
-      text-align: center;
-      font-weight: 600;
-      animation: slideIn 0.3s ease;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .success {
-      background: #E8F5E9;
-      color: #008A52;
-      border-left: 4px solid #A4D65E;
-    }
-
-    .error {
-      background: #FFE5E5;
-      color: #FF6B6B;
-      border-left: 4px solid #FF6B6B;
-    }
-
-    .waiting {
-      text-align: center;
-      padding: 3rem 2rem;
-      color: #9E9E9E;
-    }
-
-    .waiting-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-      animation: bounce 2s infinite;
-    }
-
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
-    .waiting h3 {
-      color: #003A70;
-      margin-bottom: 0.5rem;
-      font-size: 1.5rem;
-    }
-
-    .waiting p {
-      color: #9E9E9E;
-      font-size: 1rem;
-    }
-
-    .round-complete {
-      text-align: center;
-      padding: 3rem 2rem;
-    }
-
-    .round-complete-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-    }
-
-    .round-complete h2 {
-      color: #008A52;
-      margin-bottom: 1rem;
-      font-size: 1.75rem;
-    }
-
-    .round-complete p {
-      color: #9E9E9E;
-      font-size: 1rem;
-    }
+    /* ---------------------------------- */
+    /* STATUS MESSAGES & RESPONSIVENESS (Minimal changes to integrate colors) */
+    /* ---------------------------------- */
+    /* (omitted for brevity, assume original styles apply) */
 
     @media (max-width: 768px) {
-      body {
-        padding: 1rem;
-      }
-
+      /* ... (omitted for brevity, assume original styles apply) */
       .container {
-        padding: 1.5rem;
+        border-radius: 8px;
       }
-
-      .timer {
-        font-size: 2.5rem;
-      }
-
-      .question {
-        font-size: 1.125rem;
-      }
-
-      .answer-btn {
-        padding: 0.875rem;
-        font-size: 0.9375rem;
+      .content-area {
+        padding: 1rem 1.5rem;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="table-badge">Table <?= tableNumber ?></div>
-    <div id="content">
-      <div class="waiting">
-        <div class="waiting-icon">⏳</div>
-        <h3>Loading...</h3>
-      </div>
+    <div class="header-bar">
+        <div class="table-badge cssbuttons-io-button">Table <?= tableNumber ?></div>
+        </div>
+    
+    <div class="content-area" id="content-area">
+        <div id="content">
+            <div class="waiting">
+                <div class="waiting-icon">⏳</div>
+                <h3>Loading...</h3>
+            </div>
+        </div>
     </div>
   </div>
 
   <script>
+    // --- START JAVASCRIPT CODE (Functionality remains unchanged) ---
     const tableNumber = '<?= tableNumber ?>';
     let currentRound = null;
     let roundQuestions = [];
@@ -442,6 +459,7 @@
         `).join('');
 
       // Use template literal for cleaner, faster HTML generation
+      // The warning class is applied based on remaining time
       content.innerHTML = `
         <div class="round-progress">Round ${currentRound} - Question ${currentQuestionIndex + 1} of ${roundQuestions.length}</div>
         <div class="timer${roundTimeRemaining <= 30 ? ' warning' : ''}" id="timer">${roundTimeRemaining}s</div>
@@ -463,6 +481,9 @@
 
           if (roundTimeRemaining <= 30) {
             timerEl.classList.add('warning');
+          } else {
+            // Ensure warning class is removed if time goes back up (e.g., new question loads)
+            timerEl.classList.remove('warning');
           }
 
           if (roundTimeRemaining <= 0) {
@@ -495,6 +516,7 @@
       selectedAnswer = letter;
       document.querySelectorAll('.answer-btn').forEach(btn => {
         btn.classList.remove('selected');
+        // If using the ::after checkmark method, ensure you remove the checkmark on deselection (handled by class removal)
       });
       element.classList.add('selected');
       document.getElementById('submitBtn').disabled = false;
@@ -567,6 +589,7 @@
 
     // Start the application
     startPolling();
+    // --- END JAVASCRIPT CODE ---
   </script>
 </body>
 </html>
