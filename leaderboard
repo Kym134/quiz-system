@@ -301,6 +301,7 @@
     let cachedHash = null;
     let polling = null;
     let isLoading = false;
+    let lastMapped = null;
 
     function hashData(rows){
       if (!rows || !rows.length) return 'empty';
@@ -470,6 +471,7 @@
       const mapped = mapToTracks(ranked);
 
       if (!mapped.length){
+        lastMapped = null;
         championPill.style.opacity = 0;
         secondBadge.style.opacity = 0;
         thirdBadge.style.opacity = 0;
@@ -481,6 +483,7 @@
       renderChampion(mapped[0]);
       renderSecondThird(mapped[1], mapped[2]);
       renderStandardBadges(mapped.slice(3));
+      lastMapped = mapped;
       touchTimestamp();
     }
 
@@ -514,6 +517,11 @@
         document.querySelectorAll('.lb-badge, .lb-champion-pill').forEach(el => {
           el.style.transition = 'none';
         });
+        if (lastMapped && lastMapped.length){
+          renderChampion(lastMapped[0]);
+          renderSecondThird(lastMapped[1], lastMapped[2]);
+          renderStandardBadges(lastMapped.slice(3));
+        }
         setTimeout(() => {
           document.querySelectorAll('.lb-badge, .lb-champion-pill').forEach(el => {
             el.style.transition = '';
