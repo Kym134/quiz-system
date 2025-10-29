@@ -16,113 +16,140 @@ function doGet(e) {
 }
 
 function getRoundData() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var controlSheet = ss.getSheetByName('Control');
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var controlSheet = ss.getSheetByName('Control');
 
-  // Batch read control values in one call
-  var controlValues = controlSheet.getRange('B1:B5').getValues();
-  var currentRound = controlValues[0][0];
-  var timeLimit = controlValues[2][0];
-  var quizActive = controlValues[4][0];
+    // Batch read control values in one call
+    var controlValues = controlSheet.getRange('B1:B5').getValues();
+    var currentRound = controlValues[0][0];
+    var timeLimit = controlValues[2][0];
+    var quizActive = controlValues[4][0];
 
-  if (!quizActive || !currentRound) {
-    return { active: false };
-  }
-
-  var questionsSheet = ss.getSheetByName('Questions');
-
-  // Get all question data (or a reasonable range like first 100 rows)
-  // Columns: Round ID, Question ID, Text, A, PtsA, B, PtsB, C, PtsC, D, PtsD, E, PtsE (13 columns)
-  var questionData = questionsSheet.getDataRange().getValues();
-
-  var roundQuestions = [];
-
-  // Convert currentRound to string for consistent comparison
-  var currentRoundStr = String(currentRound).trim();
-
-  // Start from row 1 (skip header row 0)
-  for (var i = 1; i < questionData.length; i++) {
-    var roundId = questionData[i][0];
-
-    // Skip empty rows
-    if (!roundId) continue;
-
-    // Convert roundId to string and trim for consistent comparison
-    var roundIdStr = String(roundId).trim();
-
-    // Filter by Round ID matching current round
-    if (roundIdStr === currentRoundStr) {
-      var question = {
-        id: questionData[i][1],        // Question ID (column B)
-        text: questionData[i][2]        // Question text (column C)
-      };
-
-      // Add answers dynamically - only include non-empty answers
-      var answers = [
-        {letter: 'A', text: questionData[i][3], points: questionData[i][4]},
-        {letter: 'B', text: questionData[i][5], points: questionData[i][6]},
-        {letter: 'C', text: questionData[i][7], points: questionData[i][8]},
-        {letter: 'D', text: questionData[i][9], points: questionData[i][10]},
-        {letter: 'E', text: questionData[i][11], points: questionData[i][12]}
-      ];
-
-      // Only add answers that have text
-      answers.forEach(function(ans) {
-        if (ans.text && ans.text.toString().trim() !== '') {
-          question['answer' + ans.letter] = ans.text;
-          question['points' + ans.letter] = ans.points || 0;
-        }
-      });
-
-      roundQuestions.push(question);
+    if (!quizActive || !currentRound) {
+      return { active: false };
     }
-  }
 
-  return {
-    active: true,
-    round: currentRound,
-    questions: roundQuestions,
-    timeLimit: timeLimit
-  };
+    var questionsSheet = ss.getSheetByName('Questions');
+
+    // Get all data - for small sheets this is fine, and it handles variable column counts
+    var questionData = questionsSheet.getDataRange().getValues();
+
+    if (!questionData || questionData.length < 2) {
+      Logger.log('No question data found');
+      return { active: false };
+    }
+
+    var roundQuestions = [];
+
+    // Convert currentRound to string for consistent comparison
+    var currentRoundStr = String(currentRound).trim();
+
+    // Start from row 1 (skip header row 0)
+    for (var i = 1; i < questionData.length; i++) {
+      var roundId = questionData[i][0];
+
+      // Skip empty rows
+      if (!roundId) continue;
+
+      // Convert roundId to string and trim for consistent comparison
+      var roundIdStr = String(roundId).trim();
+
+      // Filter by Round ID matching current round
+      if (roundIdStr === currentRoundStr) {
+        var question = {
+          id: questionData[i][1],        // Question ID (column B)
+          text: questionData[i][2]        // Question text (column C)
+        };
+
+        // Add answers dynamically - only include non-empty answers
+        // Handle variable column counts by checking array length
+        var answers = [
+          {letter: 'A', textIdx: 3, pointsIdx: 4},
+          {letter: 'B', textIdx: 5, pointsIdx: 6},
+          {letter: 'C', textIdx: 7, pointsIdx: 8},
+          {letter: 'D', textIdx: 9, pointsIdx: 10},
+          {letter: 'E', textIdx: 11, pointsIdx: 12}
+        ];
+
+        answers.forEach(function(ans) {
+          // Check if columns exist before accessing
+          if (questionData[i].length > ans.textIdx) {
+            var answerText = questionData[i][ans.textIdx];
+            if (answerText && answerText.toString().trim() !== '') {
+              question['answer' + ans.letter] = answerText;
+              // Get points if column exists, default to 0
+              question['points' + ans.letter] = (questionData[i].length > ans.pointsIdx)
+                ? (questionData[i][ans.pointsIdx] || 0)
+                : 0;
+            }
+          }
+        });
+
+        roundQuestions.push(question);
+      }
+    }
+
+    Logger.log('Found ' + roundQuestions.length + ' questions for round ' + currentRound);
+
+    return {
+      active: true,
+      round: currentRound,
+      questions: roundQuestions,
+      timeLimit: timeLimit
+    };
+  } catch (error) {
+    // Log detailed error information
+    Logger.log('Error in getRoundData: ' + error.toString());
+    Logger.log('Error stack: ' + error.stack);
+    return { active: false, error: error.toString() };
+  }
 }
 
 function submitAnswer(tableNumber, questionId, answerLetter) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var responsesSheet = ss.getSheetByName('Responses');
-  var questionsSheet = ss.getSheetByName('Questions');
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var responsesSheet = ss.getSheetByName('Responses');
+    var questionsSheet = ss.getSheetByName('Questions');
 
-  // Map answer letters to column numbers (1-indexed) for points
-  // Column structure: A=RoundID, B=QuestionID, C=Text, D=AnsA, E=PtsA, F=AnsB, G=PtsB, etc.
-  var pointsColumns = {'A': 5, 'B': 7, 'C': 9, 'D': 11, 'E': 13};
-  var pointsColumn = pointsColumns[answerLetter];
+    // Map answer letters to column indices (0-indexed) for points
+    // Column structure: A=RoundID, B=QuestionID, C=Text, D=AnsA, E=PtsA, F=AnsB, G=PtsB, etc.
+    var pointsIndices = {'A': 4, 'B': 6, 'C': 8, 'D': 10, 'E': 12};
+    var pointsIndex = pointsIndices[answerLetter];
 
-  if (!pointsColumn) {
-    return { success: false, message: 'Invalid answer letter', points: 0 };
-  }
-
-  // Find the row with matching Question ID (column B)
-  var questionData = questionsSheet.getDataRange().getValues();
-  var questionRow = -1;
-  var points = 0;
-
-  for (var i = 1; i < questionData.length; i++) {
-    if (questionData[i][1] == questionId) {  // Column B (index 1) is Question ID
-      questionRow = i + 1;  // Convert to 1-indexed row number
-      // Get points from the appropriate column (0-indexed array)
-      points = questionData[i][pointsColumn - 1] || 0;
-      break;
+    if (pointsIndex === undefined) {
+      return { success: false, message: 'Invalid answer letter', points: 0 };
     }
+
+    // Get all data - handles variable column counts
+    var questionData = questionsSheet.getDataRange().getValues();
+    var points = 0;
+    var found = false;
+
+    for (var i = 1; i < questionData.length; i++) {
+      if (questionData[i][1] == questionId) {  // Column B (index 1) is Question ID
+        // Get points from the appropriate column if it exists
+        if (questionData[i].length > pointsIndex) {
+          points = questionData[i][pointsIndex] || 0;
+        }
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      return { success: false, message: 'Question not found', points: 0 };
+    }
+
+    // Write submission
+    var timestamp = new Date();
+    responsesSheet.appendRow([timestamp, tableNumber, questionId, answerLetter, points]);
+
+    return { success: true, message: 'Answer submitted!', points: points };
+  } catch (error) {
+    Logger.log('Error in submitAnswer: ' + error.toString());
+    return { success: false, message: 'Submission error: ' + error.toString(), points: 0 };
   }
-
-  if (questionRow === -1) {
-    return { success: false, message: 'Question not found', points: 0 };
-  }
-
-  // Write submission
-  var timestamp = new Date();
-  responsesSheet.appendRow([timestamp, tableNumber, questionId, answerLetter, points]);
-
-  return { success: true, message: 'Answer submitted!', points: points };
 }
 
 function getLeaderboardData() {
